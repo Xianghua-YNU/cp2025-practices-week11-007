@@ -79,7 +79,7 @@ def plot_magnetic_field_streamplot(r_coil_1, r_coil_2, d_coils):
     # 学生代码结束
 
     # 3. 使用 plt.streamplot 绘制磁场流线图
-    plt.streamplot(Y_plot,Z_plot,By_field,Bz_field,
+    plt.streamplot(Y_plot[:,:,0],Z_plot[:,:,0],By_field,Bz_field,
                    density=1.5,color='k',linewidth=1.0,
                    arrowstyle='->',arrowsize=1.0,start_points=start_points)
 
