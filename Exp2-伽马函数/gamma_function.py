@@ -2,225 +2,185 @@
 """
 学生代码模板：计算伽马函数 Gamma(a)
 """
-
 import numpy as np
 import matplotlib.pyplot as plt
-# TODO: 导入数值积分函数 (例如: from scipy.integrate import quad)
-# from scipy.integrate import quad
-# TODO: 导入可能需要的数学函数 (例如: from math import ...)
-# from math import factorial, sqrt, pi, exp, log
+from scipy.integrate import quad
+from math import factorial, sqrt, pi
 
 # --- Task 1: 绘制被积函数 ---
 
 def integrand_gamma(x, a):
     """
-    计算伽马函数的原始被积函数: f(x, a) = x^(a-1) * exp(-x)
-
-    Args:
-        x (float or np.array): 自变量值。
-        a (float): 伽马函数的参数。
-
-    Returns:
-        float or np.array: 被积函数在 x 处的值。
-
-    Hints:
-        - 需要处理 x=0 的情况 (根据 a 的值可能为 0, 1, 或 inf)。
-        - 对于 x > 0, 考虑使用 exp((a-1)*log(x) - x) 来提高数值稳定性。
+    伽马函数的原始被积函数: f(x, a) = x^(a-1) * exp(-x)
+    使用对数技巧提高数值稳定性，尤其当 x 或 a 较大时。
+    f = exp((a-1)*log(x) - x)
     """
-    # TODO: 实现被积函数的计算逻辑
-    if x < 0:
-        return 0.0 # 或者抛出错误，因为积分区间是 [0, inf)
-
+    # 处理 x=0 的情况
     if x == 0:
-        # TODO: 处理 x=0 的情况 (考虑 a>1, a=1, a<1)
-        pass # Placeholder
+        if a > 1:
+            return 0.0
+        elif a == 1:
+            # 当 a=1, f(x,1) = exp(-x), 在 x=0 时为 1
+            return 1.0
+        else: # a < 1
+            # 当 a<1, x^(a-1) 在 x=0 处发散
+            return np.inf
+    # 处理 x > 0 的情况
     elif x > 0:
-        # TODO: 计算 x > 0 的情况，建议使用 log/exp 技巧
+        # 防止 log(0) 或负数
         try:
-            # log_f = ...
-            # return exp(log_f)
-            pass # Placeholder
+            # 使用对数避免直接计算大数的幂
+            log_f = (a - 1) * np.log(x) - x
+            return np.exp(log_f)
         except ValueError:
-            return np.nan # 处理可能的计算错误
-    else: # 理论上不会进入这里
-        return np.nan
-
-    # 临时返回值，需要替换
-    return 0.0
-
+            # 如果 x 非常小导致 log(x) 问题（理论上不应发生，因已处理x=0）
+            return 0.0 # 或根据情况返回 np.nan
+    # 处理 x < 0 的情况 (积分区间是 [0, inf)，理论上不应输入负数)
+    else:
+        return 0.0 # 或者抛出错误
 
 def plot_integrands():
     """绘制 a=2, 3, 4 时的被积函数图像"""
-    x_vals = np.linspace(0.01, 10, 400) # 从略大于0开始
+    x_vals = np.linspace(0.01, 10, 400) # 从略大于0开始，到10以看清下降趋势
     plt.figure(figsize=(10, 6))
 
-    print("绘制被积函数图像...")
     for a_val in [2, 3, 4]:
-        print(f"  计算 a = {a_val}...")
-        # TODO: 计算 y_vals = [integrand_gamma(x, a_val) for x in x_vals]
-        y_vals = np.zeros_like(x_vals) # Placeholder
+        # 计算 y 值，处理可能的 inf 或 nan
+        y_vals = np.array([integrand_gamma(x, a_val) for x in x_vals])
+        # 过滤掉 inf 值以便绘图
+        valid_indices = np.isfinite(y_vals)
+        plt.plot(x_vals[valid_indices], y_vals[valid_indices], label=f'$a = {a_val}$')
 
-        # TODO: 绘制曲线 plt.plot(...)
-        # plt.plot(x_vals, y_vals, label=f'$a = {a_val}$')
+        # 标记理论峰值位置 x = a-1
+        peak_x = a_val - 1
+        if peak_x > 0: # 仅当峰值在绘制范围内时计算y值
+             peak_y = integrand_gamma(peak_x, a_val)
+             # 添加一个点标记峰值
+             plt.plot(peak_x, peak_y, 'o', ms=5, label=f'Peak at x={peak_x}' if a_val==2 else None)
 
-        # TODO: (可选) 标记理论峰值位置 x = a-1
-        # peak_x = a_val - 1
-        # if peak_x > 0:
-        #    peak_y = integrand_gamma(peak_x, a_val)
-        #    plt.plot(peak_x, peak_y, 'o', ms=5)
 
     plt.xlabel("$x$")
     plt.ylabel("$f(x, a) = x^{a-1} e^{-x}$")
     plt.title("Integrand of the Gamma Function")
-    plt.legend() # 需要 plt.plot 中有 label 才会显示
+    plt.legend()
     plt.grid(True)
-    plt.ylim(bottom=0)
-    plt.xlim(left=0)
-    # plt.show() # 在 main 函数末尾统一调用 plt.show()
+    plt.ylim(bottom=0) # Y轴从0开始
+    plt.xlim(left=0)   # X轴从0开始
+    plt.show()
 
-# --- Task 2 & 3: 解析推导 (在注释或报告中完成) ---
-# Task 2: 峰值位置推导
-# (在此处或报告中写下你的推导过程)
-# 结果: x = a - 1
+# --- Task 2 & 3: 解析推导 (在注释中说明) ---
+# Task 2: 峰值位置
+# f(x, a) = x^(a-1) * exp(-x)
+# ln(f) = (a-1)ln(x) - x
+# d(ln(f))/dx = (a-1)/x - 1
+# 令导数为 0: (a-1)/x - 1 = 0  => x = a-1 (假设 a > 1)
+# 二阶导数 d^2(ln(f))/dx^2 = -(a-1)/x^2 < 0 (若 a > 1), 确认是最大值。
 
 # Task 3: 变量代换 z = x/(c+x)
-# 1. 当 z=1/2 时, x = ? (用 c 表示)
-#    (在此处或报告中写下你的推导)
-#    结果: x = c
-# 2. 为使峰值 x=a-1 映射到 z=1/2, c 应取何值? (用 a 表示)
-#    (在此处或报告中写下你的推导)
-#    结果: c = a - 1
+# 1. 若 z=1/2: 1/2 = x/(c+x) => c+x = 2x => x = c.
+# 2. 使峰值 x=a-1 映射到 z=1/2: 需要 c = x = a-1.
+# 这个代换和 c 的选择主要对 a > 1 的情况最有意义，此时峰值在 x > 0。
 
 # --- Task 4: 实现伽马函数计算 ---
 
 def transformed_integrand_gamma(z, a):
     """
-    计算变换后的被积函数 g(z, a) = f(x(z), a) * dx/dz
-    其中 x = cz / (1-z), dx/dz = c / (1-z)^2, 且 c = a-1
-
-    Args:
-        z (float or np.array): 变换后的自变量 (积分区间 [0, 1])。
-        a (float): 伽马函数的参数。
-
-    Returns:
-        float or np.array: 变换后的被积函数值。
-
-    Hints:
-        - 这个变换主要对 a > 1 有意义 (c > 0)。需要考虑如何处理 a <= 1 的情况。
-        - 计算 f(x(z), a) 时可以调用上面实现的 integrand_gamma 函数。
-        - 处理 z=0 和 z=1 的边界情况。
+    变换后的被积函数 g(z, a) = f(x(z), a) * dx/dz
+    其中 x = cz / (1-z) 和 dx/dz = c / (1-z)^2, 且 c = a-1
+    假设 a > 1
     """
-    # TODO: 实现变换后的被积函数计算逻辑
-
-    # 首先处理 c = a-1
     c = a - 1.0
+    # 确保 c > 0，因为此变换是基于 a > 1 推导的
     if c <= 0:
-        # 如何处理 a <= 1? 直接返回 0 可能导致积分结果错误。
-        # 也许在 gamma_function 中根据 a 的值选择不同的积分方法更好？
-        # 暂时返回 0，但需要注意这可能不适用于所有情况。
-        # 或者，如果 gamma_function 保证只在 a>1 时调用此函数，则这里可以假设 c>0。
-        # return 0.0 # 临时处理
-        # 假设调用者保证 a > 1
-        if a <= 1: # 增加一个检查
-             print(f"警告: transformed_integrand_gamma 假定 a > 1，但接收到 a={a}")
-             return np.nan # 或者抛出错误
+        # 如果 a <= 1, 这个变换的推导基础（峰值在 a-1 > 0）不成立
+        # 理论上应使用其他方法或原始积分。这里返回0或NaN，让外部处理。
+        # 或者可以尝试用一个小的正数c，但这偏离了原意。
+        # 返回 0 比较安全，避免在积分器中产生问题。
+        return 0.0 # 或者 raise ValueError("Transformation assumes a > 1")
 
-    # 处理 z 的边界
-    if z < 0 or z > 1: return 0.0
-    if z == 1: return 0.0 # 对应 x=inf
+    # 处理 z 的边界情况
+    if z < 0 or z > 1: # 积分区间外
+        return 0.0
+    if z == 1: # 对应 x = inf, 极限应为 0
+        return 0.0
+    if z == 0: # 对应 x = 0
+        # 使用原始被积函数在 x=0 的行为
+        return integrand_gamma(0, a) * c # dx/dz 在 z=0 时为 c
 
-    # TODO: 计算 x = c*z / (1-z)
-    # TODO: 计算 dxdz = c / (1-z)**2
-    x = 0 # Placeholder
-    dxdz = 0 # Placeholder
+    # 计算 x 和 dx/dz
+    x = c * z / (1.0 - z)
+    dxdz = c / ((1.0 - z)**2)
 
-    # TODO: 计算 f(x, a) * dx/dz，调用 integrand_gamma(x, a)
-    val_f = 0 # Placeholder
-    result = val_f * dxdz
+    # 计算 f(x, a) * dx/dz
+    # 使用原始被积函数（带对数优化）计算 f(x,a)
+    val_f = integrand_gamma(x, a)
 
-    # 检查结果是否有效
-    if not np.isfinite(result):
-        return 0.0 # 或 np.nan
+    # 检查计算结果是否有效
+    if not np.isfinite(val_f) or not np.isfinite(dxdz):
+        # 如果出现 inf 或 nan，可能表示数值问题或 a<=1 的情况处理不当
+        return 0.0 # 返回0避免破坏积分
 
-    return result
+    return val_f * dxdz
 
 def gamma_function(a):
     """
-    计算 Gamma(a) 使用数值积分。
-
-    Args:
-        a (float): 伽马函数的参数。
-
-    Returns:
-        float: Gamma(a) 的计算值。
-
-    Hints:
-        - 检查 a <= 0 的情况。
-        - 考虑对 a > 1 使用变换后的积分 (transformed_integrand_gamma, 区间 [0, 1])。
-        - 考虑对 a <= 1 使用原始积分 (integrand_gamma, 区间 [0, inf])，因为变换推导不适用。
-        - 使用导入的数值积分函数 (例如 `quad`)。
+    计算 Gamma(a)
+    - 如果 a > 1, 使用变量代换 z = x/(c+x) 和 c=a-1 进行数值积分。
+    - 如果 a <= 1, 直接对原始被积函数进行积分（因为变换推导不适用）。
+    使用 scipy.integrate.quad 进行积分。
     """
     if a <= 0:
-        print(f"错误: Gamma(a) 对 a={a} <= 0 无定义。")
+        print(f"警告: Gamma(a) 对 a={a} <= 0 无定义 (或为复数)。")
         return np.nan
-
-    integral_value = np.nan # Placeholder
 
     try:
         if a > 1.0:
-            # TODO: 使用数值积分计算变换后的积分从 0 到 1
-            # integral_value, error = quad(transformed_integrand_gamma, 0, 1, args=(a,))
-            pass # Placeholder
-        else: # a <= 1
-            # TODO: 使用数值积分计算原始积分从 0 到 inf
-            # integral_value, error = quad(integrand_gamma, 0, np.inf, args=(a,))
-            pass # Placeholder
+            # 使用变换后的积分，区间 [0, 1]
+            result, error = quad(transformed_integrand_gamma, 0, 1, args=(a,))
+        else:
+            # 对于 a <= 1 (例如 a=1.5/2=0.75, 或 a=1), 变换的 c<=0, 推导失效
+            # 直接积分原始函数，区间 [0, inf]
+            # quad 对 x=0 处的奇异点 (当 a<1 时) 有较好的处理能力
+            result, error = quad(integrand_gamma, 0, np.inf, args=(a,))
 
-        # print(f"Integration error estimate for a={a}: {error}") # Optional: print error
-        return integral_value
+        # 可以检查一下积分误差 `error`，如果过大则给出警告
+        # print(f"Integration error estimate for a={a}: {error}")
+        return result
 
     except Exception as e:
         print(f"计算 Gamma({a}) 时发生错误: {e}")
         return np.nan
 
 # --- 主程序 ---
-if __name__ == "__main__":
-    # --- Task 1 ---
-    print("--- Task 1: 绘制被积函数 ---")
-    # plot_integrands() # 取消注释以执行绘图
-
-    # --- Task 2 & 3 ---
-    print("\n--- Task 2 & 3: 解析推导见代码注释/报告 ---")
-    # (确保注释或报告中有推导)
-
-    # --- Task 4 ---
-    print("\n--- Task 4: 测试 Gamma(1.5) ---")
+def test_gamma():
+    """测试伽马函数的计算结果"""
+    # 测试Γ(3/2)
     a_test = 1.5
-    # TODO: 调用 gamma_function 计算 gamma_calc
-    gamma_calc = 0.0 # Placeholder
-    # TODO: 计算精确值 gamma_exact = 0.5 * sqrt(pi)
-    gamma_exact = 0.0 # Placeholder
-    print(f"计算值 Gamma({a_test}) = {gamma_calc:.8f}")
-    print(f"精确值 sqrt(pi)/2 = {gamma_exact:.8f}")
-    # TODO: 计算并打印相对误差
-    # if gamma_exact != 0:
-    #     relative_error = abs(gamma_calc - gamma_exact) / abs(gamma_exact)
-    #     print(f"相对误差 = {relative_error:.4e}")
+    result = gamma_function(a_test) # 使用 gamma_function 而不是 gamma
+    expected = np.sqrt(np.pi) / 2  # 更精确的期望值
+    relative_error = abs(result - expected) / expected if expected != 0 else 0
+    print(f"Γ({a_test}) = {result:.8f} (精确值: {expected:.8f}, 相对误差: {relative_error:.2e})")
 
-    # --- Task 5 ---
-    print("\n--- Task 5: 测试整数 Gamma(a) = (a-1)! ---")
-    for a_int in [3, 6, 10]:
-        print(f"\n计算 Gamma({a_int}):")
-        # TODO: 调用 gamma_function 计算 gamma_int_calc
-        gamma_int_calc = 0.0 # Placeholder
-        # TODO: 计算精确值 exact_factorial = float(factorial(a_int - 1))
-        exact_factorial = 0.0 # Placeholder
-        print(f"  计算值 = {gamma_int_calc:.8f}")
-        print(f"  精确值 ({a_int-1}!) = {exact_factorial:.8f}")
-        # TODO: 计算并打印相对误差
-        # if exact_factorial != 0:
-        #     relative_error_int = abs(gamma_int_calc - exact_factorial) / abs(exact_factorial)
-        #     print(f"  相对误差 = {relative_error_int:.4e}")
+    # 测试整数值
+    test_values = [3, 6, 10]
+    print("\n测试整数值：")
+    print("-" * 60)
+    print("a\t计算值 Γ(a)\t精确值 (a-1)!\t相对误差")
+    print("-" * 60)
+    for a in test_values:
+        result = gamma_function(a) # 使用 gamma_function 而不是 gamma
+        # 使用 math.factorial 而不是 np.math.factorial
+        factorial_val = float(factorial(a-1)) # 转换为浮点数以便计算误差
+        relative_error = abs(result - factorial_val) / factorial_val if factorial_val != 0 else 0
+        print(f"{a}\t{result:<12.6e}\t{factorial_val:<12.0f}\t{relative_error:.2e}")
+    print("-" * 60)
 
-    # --- 显示图像 ---
-    # plt.show() # 取消注释以显示 Task 1 的图像
+def main():
+    # 绘制原始被积函数
+    plot_integrands() # 使用 plot_integrands 而不是 plot_integrand
+
+    # 运行测试
+    test_gamma()
+
+if __name__ == '__main__':
+    main()
